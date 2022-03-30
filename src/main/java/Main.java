@@ -6,17 +6,26 @@ import org.json.simple.parser.JSONParser;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
-import java.text.SimpleDateFormat;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
+import java.time.temporal.ChronoUnit;
 import java.util.*;
 
 public class Main {
 
     public static void main(String[] args) {
 
-        String requiredOrigin = "VVO"; // Владивосток
-        String requiredDestination = "TLV"; // Тель-Авив
+        // Владивосток
+        String requiredOrigin = "VVO";
+        String originZone = "Asia/Vladivostok";
+
+        // Тель-Авив
+        String requiredDestination = "TLV";
+        String destinationZone = "Asia/Tel_Aviv";
+
         int percentileInd = 90; // 90-й процентиль
-        SimpleDateFormat format = new SimpleDateFormat("dd.MM.yy HH:mm");
 
         System.out.println("Введите путь файла JSON");
         Scanner scanner = new Scanner(System.in);
@@ -39,10 +48,9 @@ public class Main {
                 if (!ticket.get("origin").equals(requiredOrigin)) continue;
                 if (!ticket.get("destination").equals(requiredDestination)) continue;
 
-                String departure = String.format("%s %s", ticket.get("departure_date"), ticket.get("departure_time"));
-                String arrival = String.format("%s %s", ticket.get("arrival_date"), ticket.get("arrival_time"));
-                long diffMS = format.parse(arrival).getTime() - format.parse(departure).getTime();
-                flightMinutes.add(diffMS / 1000 / 60);
+                ZonedDateTime departure = parseDate(ticket.get("departure_date"), ticket.get("departure_time"), originZone);
+                ZonedDateTime arrival = parseDate(ticket.get("arrival_date"), ticket.get("arrival_time"), destinationZone);
+                flightMinutes.add(ChronoUnit.MINUTES.between(departure, arrival));
 
             }
 
@@ -59,6 +67,12 @@ public class Main {
             e.printStackTrace();
         }
 
+    }
+
+    private static ZonedDateTime parseDate(Object datePart, Object timePart, String timeZone) {
+        String strDate = String.format("%s %s", datePart, timePart);
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd.MM.yy H:mm");
+        return LocalDateTime.parse(strDate , formatter).atZone(ZoneId.of(timeZone));
     }
 
     private static String formatTime(long minutes) {
